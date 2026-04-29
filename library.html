@@ -32,7 +32,7 @@
         <div class="weather-icon" id="weather-icon">🌤</div>
         <div class="weather-info">
           <span class="weather-temp" id="weather-temp">--°C</span>
-          <span class="weather-desc" id="weather-desc">加载中</span>
+          <span class="weather-desc" id="weather-desc">加载中...</span>
         </div>
       </div>
     </div>
@@ -41,7 +41,27 @@
         <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
         </svg>
-        <input type="text" id="search-input" placeholder="搜索简报、笔记...">
+        <input type="text" id="search-input" placeholder="搜索简报、笔记、文件..." autocomplete="off">
+        <div class="search-filters" id="search-filters">
+          <div class="search-filter-row">
+            <label>类型</label>
+            <select id="search-type">
+              <option value="all">全部</option>
+              <option value="briefing">📊 简报</option>
+              <option value="note">📝 笔记</option>
+              <option value="file">📁 文件</option>
+              <option value="link">🔗 链接</option>
+            </select>
+          </div>
+          <div class="search-filter-row">
+            <label>起始日期</label>
+            <input type="date" id="search-date-from">
+          </div>
+          <div class="search-filter-row">
+            <label>结束日期</label>
+            <input type="date" id="search-date-to">
+          </div>
+        </div>
       </div>
       <button class="logout-btn" id="logout-btn" title="退出登录">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -51,84 +71,81 @@
     </div>
   </header>
 
-  <div class="layout">
+  <!-- Main Layout -->
+  <div class="main-layout">
     <!-- Sidebar -->
-    <aside class="sidebar" id="sidebar">
-      <nav class="sidebar-nav">
-        <a class="nav-item active" data-view="dashboard" href="#dashboard">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
-          </svg>
-          <span>首页</span>
+    <nav class="sidebar" id="sidebar">
+      <div class="sidebar-section">
+        <div class="sidebar-label">导航</div>
+        <a href="#dashboard" class="nav-item active" data-view="dashboard">
+          <span class="nav-icon">🏠</span>
+          <span class="nav-text">仪表盘</span>
         </a>
-        <a class="nav-item" data-view="briefings" href="#briefings">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
-          </svg>
-          <span>情报简报</span>
-          <span class="badge" id="badge-briefings">0</span>
+        <a href="#briefings" class="nav-item" data-view="briefings">
+          <span class="nav-icon">📊</span>
+          <span class="nav-text">情报简报</span>
+          <span class="nav-badge" id="badge-briefings">0</span>
         </a>
-        <a class="nav-item" data-view="notes" href="#notes">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
-          </svg>
-          <span>个人笔记</span>
-          <span class="badge" id="badge-notes">0</span>
+        <a href="#notes" class="nav-item" data-view="notes">
+          <span class="nav-icon">📝</span>
+          <span class="nav-text">个人笔记</span>
+          <span class="nav-badge" id="badge-notes">0</span>
         </a>
-        <a class="nav-item" data-view="files" href="#files">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z"/><polyline points="13 2 13 9 20 9"/>
-          </svg>
-          <span>文件档案</span>
-          <span class="badge" id="badge-files">0</span>
+        <a href="#files" class="nav-item" data-view="files">
+          <span class="nav-icon">📁</span>
+          <span class="nav-text">文件档案</span>
+          <span class="nav-badge" id="badge-files">0</span>
         </a>
-        <a class="nav-item" data-view="links" href="#links">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/>
-          </svg>
-          <span>外部链接</span>
-          <span class="badge" id="badge-links">0</span>
+        <a href="#links" class="nav-item" data-view="links">
+          <span class="nav-icon">🔗</span>
+          <span class="nav-text">外部链接</span>
+          <span class="nav-badge" id="badge-links">0</span>
         </a>
-      </nav>
-      <div class="sidebar-footer">
-        <div class="sidebar-credit">
-          <span class="credit-icon">🍷</span>
-          <span>Designed by 沈秋月</span>
-        </div>
       </div>
-    </aside>
+      <div class="sidebar-footer">
+        <div class="sidebar-credit">🍷 沈秋月 · 设计与维护</div>
+      </div>
+    </nav>
 
-    <!-- Main Content -->
+    <!-- Content Area -->
     <main class="content">
       <!-- Dashboard View -->
       <section class="view" id="view-dashboard">
-        <div class="view-header">
-          <h1>📚 欢迎回来，祈鸳</h1>
-          <p class="view-subtitle">你的私人知识空间</p>
-        </div>
         <div class="dashboard-grid">
-          <div class="dash-card">
-            <div class="dash-card-label">🕐 当前时间</div>
-            <div class="dash-clock-time" id="dash-clock-time">--:--</div>
+          <!-- Clock Card -->
+          <div class="dash-card dash-clock">
+            <div class="dash-clock-time" id="dash-clock-time">--:--:--</div>
             <div class="dash-clock-date" id="dash-clock-date">----年--月--日</div>
-            <div class="dash-weather">
-              <span id="dash-weather-icon">🌤</span>
-              <span id="dash-weather-text">加载中...</span>
-            </div>
           </div>
-          <div class="dash-card">
-            <div class="dash-card-label">📊 馆藏统计</div>
-            <div class="dash-stat-grid">
-              <div class="dash-stat"><div class="dash-stat-num" id="stat-briefings">0</div><div class="dash-stat-label">简报</div></div>
-              <div class="dash-stat"><div class="dash-stat-num" id="stat-notes">0</div><div class="dash-stat-label">笔记</div></div>
-              <div class="dash-stat"><div class="dash-stat-num" id="stat-files">0</div><div class="dash-stat-label">文件</div></div>
-              <div class="dash-stat"><div class="dash-stat-num" id="stat-links">0</div><div class="dash-stat-label">链接</div></div>
-            </div>
+          <!-- Weather Card -->
+          <div class="dash-card dash-weather">
+            <div class="dash-weather-icon" id="dash-weather-icon">🌤</div>
+            <div class="dash-weather-text" id="dash-weather-text">加载中...</div>
+          </div>
+          <!-- Stats Cards -->
+          <div class="dash-card dash-stat">
+            <div class="dash-stat-num" id="stat-briefings">0</div>
+            <div class="dash-stat-label">📊 情报简报</div>
+          </div>
+          <div class="dash-card dash-stat">
+            <div class="dash-stat-num" id="stat-notes">0</div>
+            <div class="dash-stat-label">📝 个人笔记</div>
+          </div>
+          <div class="dash-card dash-stat">
+            <div class="dash-stat-num" id="stat-files">0</div>
+            <div class="dash-stat-label">📁 文件档案</div>
+          </div>
+          <div class="dash-card dash-stat">
+            <div class="dash-stat-num" id="stat-links">0</div>
+            <div class="dash-stat-label">🔗 外部链接</div>
           </div>
         </div>
-        <div class="section-header"><h2>📝 最近更新</h2></div>
-        <div class="content-list" id="recent-list">
-          <p class="empty-state">暂无内容</p>
+        <!-- Recent Items -->
+        <div class="dash-section">
+          <h2 class="dash-section-title">📖 最近更新</h2>
+          <div class="dash-recent-list" id="dash-recent-list">
+            <p class="empty-state">暂无内容</p>
+          </div>
         </div>
       </section>
 
@@ -136,7 +153,7 @@
       <section class="view hidden" id="view-briefings">
         <div class="view-header">
           <h1>📊 情报简报</h1>
-          <p class="view-subtitle">黄金市场分析 · 午间/收盘简报</p>
+          <p class="view-subtitle">每日黄金市场分析与情报汇总</p>
         </div>
         <div class="content-list" id="briefings-list">
           <p class="empty-state">暂无简报</p>
@@ -147,9 +164,9 @@
       <section class="view hidden" id="view-notes">
         <div class="view-header">
           <h1>📝 个人笔记</h1>
-          <p class="view-subtitle">私人笔记与备忘</p>
+          <p class="view-subtitle">祈鸳的私人笔记与备忘</p>
         </div>
-        <div class="content-list" id="notes-list">
+        <div class="content-grid" id="notes-list">
           <p class="empty-state">暂无笔记</p>
         </div>
       </section>
@@ -201,6 +218,6 @@
     </main>
   </div>
 
-  <script src="js/app.js"></script>
+  <script src="js/app-v2.js"></script>
 </body>
 </html>
