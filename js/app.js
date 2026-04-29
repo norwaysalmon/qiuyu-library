@@ -19,7 +19,7 @@
   let currentView  = 'dashboard';
 
   /* ── 文件管理状态 ── */
-  const FILE_API_BASE = '/api/files';          // Worker API 基础路径
+  const FILE_API_BASE = 'https://qiuyu-library-api.norwaysalmon.workers.dev/api/files';  // Worker API 基础路径
   const FILE_TOKEN    = 'qiuyu2026';           // 认证 Token
   let   fileList      = [];                    // 当前文件列表
   let   currentPrefix = '';                    // 当前文件夹前缀（面包屑）
