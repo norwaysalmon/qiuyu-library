@@ -1,6 +1,8 @@
 /* ============================================================
-   祈鸳的图书馆 — 主应用逻辑（第一阶段 + 第二阶段）
-   Phase 2 新增：侧边栏遮罩、列表交错淡入、Modal 增强
+   祈鸳的图书馆 — 主应用逻辑（第一阶段 + 第二阶段 + 第三阶段）
+   Phase 3 新增：
+     - 简报百叶帘式分页（按日期分组 accordion）
+     - 文件上传与管理（R2 + Cloudflare Worker）
    ============================================================ */
 
 (function () {
@@ -15,6 +17,13 @@
   /* ── 状态 ── */
   let searchIndex  = [];
   let currentView  = 'dashboard';
+
+  /* ── 文件管理状态 ── */
+  const FILE_API_BASE = '/api/files';          // Worker API 基础路径
+  const FILE_TOKEN    = 'qiuyu2026';           // 认证 Token
+  let   fileList      = [];                    // 当前文件列表
+  let   currentPrefix = '';                    // 当前文件夹前缀（面包屑）
+  let   folderList    = [];                    // 已知文件夹列表
 
   /* ── DOM 快捷选择器 ── */
   const $  = (s) => document.querySelector(s);
@@ -36,6 +45,7 @@
     setupSearch();
     setupModal();
     setupLogout();
+    setupFileUpload();   // 初始化文件上传模块
 
     /* 根据 URL hash 决定初始视图 */
     const hash = window.location.hash.slice(1) || 'dashboard';
@@ -139,11 +149,25 @@
      渲染函数（各视图列表）
      ══════════════════════════════════════════ */
 
+  /* ── 功能一：简报百叶帘式分页 ── */
   function renderBriefings() {
+    const container = $('#briefings-list');
+    if (!container) return;
+
     const items = searchIndex
       .filter(i => i.type === 'briefing')
       .sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
-    renderList($('#briefings-list'), items, '暂无简报');
+
+    if (items.length === 0) {
+      container.innerHTML = '<p class="empty-state">暂无简报</p>';
+      return;
+    }
+
+    /* 按日期分组 */
+    const groups = groupByDate(items);
+    container.innerHTML = renderAccordionGroups(groups, true);
+    attachAccordionListeners(container);
+    attachItemListeners(container);
   }
 
   function renderNotes() {
@@ -153,11 +177,9 @@
     renderList($('#notes-list'), items, '暂无笔记');
   }
 
+  /* 文件视图由文件上传模块接管，此处仅作兜底 */
   function renderFiles() {
-    const items = searchIndex
-      .filter(i => i.type === 'file')
-      .sort((a, b) => b.date.localeCompare(a.date));
-    renderList($('#files-list'), items, '暂无文件');
+    loadFileList();
   }
 
   function renderLinks() {
@@ -176,9 +198,6 @@
 
   /**
    * 通用列表渲染（含交错淡入动画）
-   * @param {Element} container - 目标容器
-   * @param {Array}   items     - 数据数组
-   * @param {string}  emptyMsg  - 空状态提示文字
    */
   function renderList(container, items, emptyMsg) {
     if (!container) return;
@@ -186,11 +205,118 @@
       container.innerHTML = `<p class="empty-state">${emptyMsg}</p>`;
       return;
     }
-    /* 交错淡入：每项延迟 50ms，最多延迟 400ms */
     container.innerHTML = items
       .map((item, i) => createListItem(item, i))
       .join('');
     attachItemListeners(container);
+  }
+
+
+  /* ══════════════════════════════════════════
+     百叶帘（Accordion）分组逻辑
+     ══════════════════════════════════════════ */
+
+  /**
+   * 将简报数组按日期分组，返回 [{date, items}] 数组（日期降序）
+   */
+  function groupByDate(items) {
+    const map = new Map();
+    items.forEach(item => {
+      if (!map.has(item.date)) map.set(item.date, []);
+      map.get(item.date).push(item);
+    });
+    /* 按日期降序排列 */
+    return [...map.entries()]
+      .sort((a, b) => b[0].localeCompare(a[0]))
+      .map(([date, groupItems]) => ({ date, items: groupItems }));
+  }
+
+  /**
+   * 渲染百叶帘分组 HTML
+   * @param {Array}   groups       - [{date, items}]
+   * @param {boolean} openFirst    - 是否默认展开第一组
+   */
+  function renderAccordionGroups(groups, openFirst = true) {
+    return groups.map((group, groupIndex) => {
+      const isOpen = openFirst && groupIndex === 0;
+      const dateLabel = formatDateFull(group.date);
+      const count     = group.items.length;
+      const countText = `${count} 份简报`;
+
+      /* 从该日期最新简报摘要中提取金价 */
+      const latestItem  = group.items[0];
+      const priceMatch  = (latestItem.summary || '').match(/\$([0-9,]+(?:\.\d+)?)/);
+      const priceText   = priceMatch ? priceMatch[0] : '';
+
+      /* 简报卡片列表 HTML */
+      const cardsHtml = group.items
+        .map((item, i) => createListItem(item, i))
+        .join('');
+
+      return `
+        <div class="accordion-group${isOpen ? ' open' : ''}" data-date="${escapeHtml(group.date)}">
+          <div class="accordion-header" role="button" tabindex="0" aria-expanded="${isOpen}">
+            <span class="accordion-arrow">${isOpen ? '▼' : '▶'}</span>
+            <span class="accordion-date">${escapeHtml(dateLabel)}</span>
+            <span class="accordion-meta">
+              ${priceText ? `<span class="accordion-price">${escapeHtml(priceText)}</span>` : ''}
+              <span class="accordion-count">${escapeHtml(countText)}</span>
+            </span>
+          </div>
+          <div class="accordion-body" style="${isOpen ? '' : 'max-height:0;'}">
+            <div class="accordion-content content-list">
+              ${cardsHtml}
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  /**
+   * 为容器内所有 accordion-header 绑定展开/折叠事件
+   */
+  function attachAccordionListeners(container) {
+    container.querySelectorAll('.accordion-header').forEach(header => {
+      const toggle = () => {
+        const group = header.closest('.accordion-group');
+        const body  = group.querySelector('.accordion-body');
+        const arrow = header.querySelector('.accordion-arrow');
+        const isOpen = group.classList.contains('open');
+
+        if (isOpen) {
+          /* 折叠：先设置当前高度，再归零触发动画 */
+          body.style.maxHeight = body.scrollHeight + 'px';
+          requestAnimationFrame(() => {
+            body.style.maxHeight = '0';
+          });
+          group.classList.remove('open');
+          header.setAttribute('aria-expanded', 'false');
+          arrow.textContent = '▶';
+        } else {
+          /* 展开：设置 scrollHeight */
+          body.style.maxHeight = body.scrollHeight + 'px';
+          group.classList.add('open');
+          header.setAttribute('aria-expanded', 'true');
+          arrow.textContent = '▼';
+          /* 动画结束后移除固定高度，允许内容自适应 */
+          body.addEventListener('transitionend', () => {
+            if (group.classList.contains('open')) {
+              body.style.maxHeight = 'none';
+            }
+          }, { once: true });
+        }
+      };
+
+      header.addEventListener('click', toggle);
+      /* 键盘可访问性：Enter / Space 触发 */
+      header.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          toggle();
+        }
+      });
+    });
   }
 
 
@@ -420,40 +546,41 @@
       return;
     }
 
-    /* 搜索结果也带交错淡入 */
-    container.innerHTML = results.map((item, i) => {
-      const icon        = getTypeIcon(item.type);
-      const titleHtml   = query ? highlightText(escapeHtml(item.title),          query) : escapeHtml(item.title);
-      const summaryHtml = query ? highlightText(escapeHtml(item.summary || ''),  query) : escapeHtml(item.summary || '');
-      const tags        = (item.tags||[]).map(t => `<span class="tag">${escapeHtml(t)}</span>`).join('');
+    /* 搜索结果中的简报也使用百叶帘分组 */
+    const briefingResults = results.filter(i => i.type === 'briefing');
+    const otherResults    = results.filter(i => i.type !== 'briefing');
 
-      let extraClass = '', extraStyles = '', typeBadgeHtml = '';
-      if (item.type === 'briefing') {
-        const btype = getBriefingType(item.id);
-        if (btype) {
-          extraClass    = ' briefing-item';
-          extraStyles   = `style="--briefing-color:${btype.color};animation-delay:${Math.min(i*55,400)}ms"`;
-          typeBadgeHtml = `<div class="briefing-type-badge" style="--badge-bg:${btype.badgeBg};--badge-color:${btype.badgeColor};--badge-border:${btype.badgeBorder}">${btype.emoji} ${btype.label}</div>`;
-        }
-      }
+    let html = '';
 
-      const delay = Math.min(i * 55, 400);
-      const styleAttr = item.type === 'briefing' && extraStyles
-        ? extraStyles  /* 已含 delay */
-        : `style="animation-delay:${delay}ms"`;
+    /* 非简报结果直接平铺 */
+    if (otherResults.length > 0) {
+      html += otherResults.map((item, i) => {
+        const icon        = getTypeIcon(item.type);
+        const titleHtml   = query ? highlightText(escapeHtml(item.title),         query) : escapeHtml(item.title);
+        const summaryHtml = query ? highlightText(escapeHtml(item.summary || ''), query) : escapeHtml(item.summary || '');
+        const tags        = (item.tags||[]).map(t => `<span class="tag">${escapeHtml(t)}</span>`).join('');
+        const delay       = Math.min(i * 55, 400);
+        return `
+          <div class="content-item animate-in" style="animation-delay:${delay}ms" data-id="${escapeHtml(item.id)}">
+            <div class="content-item-icon">${icon}</div>
+            <div class="content-item-body">
+              <div class="content-item-title">${titleHtml}</div>
+              <div class="content-item-summary">${summaryHtml}</div>
+              ${tags ? `<div class="content-item-tags">${tags}</div>` : ''}
+            </div>
+            <div class="content-item-date">${formatDate(item.date)}</div>
+          </div>`;
+      }).join('');
+    }
 
-      return `
-        <div class="content-item animate-in${extraClass}" ${styleAttr} data-id="${escapeHtml(item.id)}">
-          <div class="content-item-icon">${icon}</div>
-          <div class="content-item-body">
-            <div class="content-item-title">${titleHtml}</div>
-            ${typeBadgeHtml}
-            <div class="content-item-summary">${summaryHtml}</div>
-            ${tags ? `<div class="content-item-tags">${tags}</div>` : ''}
-          </div>
-          <div class="content-item-date">${formatDate(item.date)}</div>
-        </div>`;
-    }).join('');
+    /* 简报结果使用百叶帘分组 */
+    if (briefingResults.length > 0) {
+      const groups = groupByDate(briefingResults);
+      html += renderAccordionGroups(groups, true);
+    }
+
+    container.innerHTML = html;
+    attachAccordionListeners(container);
     attachItemListeners(container);
   }
 
@@ -592,6 +719,453 @@
 
 
   /* ══════════════════════════════════════════
+     功能二：文件上传与管理
+     ══════════════════════════════════════════ */
+
+  /**
+   * 初始化文件上传模块：注入 UI、绑定事件
+   */
+  function setupFileUpload() {
+    const view = $('#view-files');
+    if (!view) return;
+
+    /* 在视图顶部注入上传区域 + 文件管理 UI */
+    const uploadZoneHtml = `
+      <!-- 面包屑导航 -->
+      <div class="file-breadcrumb" id="file-breadcrumb">
+        <span class="breadcrumb-item breadcrumb-root" data-prefix="">📁 全部文件</span>
+      </div>
+
+      <!-- 上传区域 -->
+      <div class="file-upload-zone" id="file-upload-zone">
+        <div class="upload-drop-area" id="upload-drop-area">
+          <div class="upload-drop-icon">☁️</div>
+          <div class="upload-drop-text">拖拽文件到此处上传</div>
+          <div class="upload-drop-hint">或点击下方按钮选择文件</div>
+        </div>
+        <div class="upload-controls">
+          <label class="upload-btn" for="file-input">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+              <polyline points="17 8 12 3 7 8"/>
+              <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+            选择文件
+          </label>
+          <input type="file" id="file-input" multiple style="display:none">
+          <select class="upload-folder-select" id="upload-folder-select">
+            <option value="">📂 上传到根目录</option>
+          </select>
+          <button class="upload-mkdir-btn" id="upload-mkdir-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/>
+              <line x1="12" y1="11" x2="12" y2="17"/>
+              <line x1="9" y1="14" x2="15" y2="14"/>
+            </svg>
+            新建文件夹
+          </button>
+        </div>
+        <!-- 上传进度条 -->
+        <div class="upload-progress-wrap hidden" id="upload-progress-wrap">
+          <div class="upload-progress-label" id="upload-progress-label">上传中...</div>
+          <div class="upload-progress-bar">
+            <div class="upload-progress-fill" id="upload-progress-fill" style="width:0%"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 文件列表区域 -->
+      <div class="file-manager" id="file-manager">
+        <div class="file-manager-header">
+          <span class="file-manager-title">文件列表</span>
+          <button class="file-refresh-btn" id="file-refresh-btn" title="刷新">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="23 4 23 10 17 10"/>
+              <path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/>
+            </svg>
+            刷新
+          </button>
+        </div>
+        <div class="file-table-wrap" id="file-table-wrap">
+          <p class="empty-state">加载中...</p>
+        </div>
+      </div>
+    `;
+
+    /* 替换原有内容区（保留 view-header） */
+    const viewHeader = view.querySelector('.view-header');
+    /* 移除旧的 content-grid */
+    const oldGrid = view.querySelector('#files-list');
+    if (oldGrid) oldGrid.remove();
+
+    /* 插入新 UI */
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = uploadZoneHtml;
+    view.appendChild(wrapper);
+
+    /* 绑定拖拽上传 */
+    bindDropZone();
+    /* 绑定文件选择 */
+    $('#file-input').addEventListener('change', (e) => {
+      handleFileUpload([...e.target.files]);
+      e.target.value = ''; // 重置，允许重复选同一文件
+    });
+    /* 绑定新建文件夹 */
+    $('#upload-mkdir-btn').addEventListener('click', handleMkdir);
+    /* 绑定刷新 */
+    $('#file-refresh-btn').addEventListener('click', () => loadFileList());
+  }
+
+  /* ── 拖拽上传 ── */
+  function bindDropZone() {
+    const dropArea = $('#upload-drop-area');
+    if (!dropArea) return;
+
+    ['dragenter', 'dragover'].forEach(evt => {
+      dropArea.addEventListener(evt, (e) => {
+        e.preventDefault();
+        dropArea.classList.add('drag-over');
+      });
+    });
+    ['dragleave', 'drop'].forEach(evt => {
+      dropArea.addEventListener(evt, (e) => {
+        e.preventDefault();
+        dropArea.classList.remove('drag-over');
+      });
+    });
+    dropArea.addEventListener('drop', (e) => {
+      const files = [...e.dataTransfer.files];
+      if (files.length > 0) handleFileUpload(files);
+    });
+    /* 点击拖拽区也触发文件选择 */
+    dropArea.addEventListener('click', () => $('#file-input').click());
+  }
+
+  /* ── 上传文件 ── */
+  async function handleFileUpload(files) {
+    if (!files || files.length === 0) return;
+
+    const folderSelect = $('#upload-folder-select');
+    const folder       = folderSelect ? folderSelect.value : '';
+    const progressWrap = $('#upload-progress-wrap');
+    const progressFill = $('#upload-progress-fill');
+    const progressLabel= $('#upload-progress-label');
+
+    progressWrap.classList.remove('hidden');
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      progressLabel.textContent = `上传中 (${i + 1}/${files.length})：${file.name}`;
+      progressFill.style.width  = '0%';
+
+      const formData = new FormData();
+      formData.append('file', file);
+      if (folder) formData.append('folder', folder);
+
+      try {
+        /* 使用 XMLHttpRequest 以支持进度条 */
+        await new Promise((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('POST', `${FILE_API_BASE}/upload`);
+          xhr.setRequestHeader('X-Lib-Token', FILE_TOKEN);
+
+          xhr.upload.addEventListener('progress', (e) => {
+            if (e.lengthComputable) {
+              progressFill.style.width = Math.round((e.loaded / e.total) * 100) + '%';
+            }
+          });
+
+          xhr.addEventListener('load', () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              progressFill.style.width = '100%';
+              resolve();
+            } else {
+              reject(new Error(`上传失败：HTTP ${xhr.status}`));
+            }
+          });
+          xhr.addEventListener('error', () => reject(new Error('网络错误')));
+          xhr.send(formData);
+        });
+      } catch (err) {
+        showFileToast(`❌ ${file.name} 上传失败：${err.message}`, 'error');
+      }
+    }
+
+    progressLabel.textContent = '✅ 上传完成';
+    setTimeout(() => progressWrap.classList.add('hidden'), 2000);
+
+    /* 刷新文件列表 */
+    loadFileList();
+  }
+
+  /* ── 新建文件夹 ── */
+  async function handleMkdir() {
+    const name = prompt('请输入文件夹名称：');
+    if (!name || !name.trim()) return;
+    const prefix = name.trim().replace(/[/\\]/g, '-') + '/';
+
+    try {
+      const resp = await fetch(`${FILE_API_BASE}/mkdir`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Lib-Token': FILE_TOKEN,
+        },
+        body: JSON.stringify({ prefix }),
+      });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      showFileToast(`✅ 文件夹「${name}」创建成功`);
+      loadFileList();
+    } catch (err) {
+      showFileToast(`❌ 创建失败：${err.message}`, 'error');
+    }
+  }
+
+  /* ── 加载文件列表 ── */
+  async function loadFileList() {
+    const tableWrap = $('#file-table-wrap');
+    if (!tableWrap) return;
+
+    tableWrap.innerHTML = '<p class="empty-state">加载中...</p>';
+
+    try {
+      const url  = currentPrefix
+        ? `${FILE_API_BASE}?prefix=${encodeURIComponent(currentPrefix)}`
+        : FILE_API_BASE;
+      const resp = await fetch(url, {
+        headers: { 'X-Lib-Token': FILE_TOKEN },
+      });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const data = await resp.json();
+      fileList   = data.files  || [];
+      folderList = data.folders || [];
+
+      renderFileTable(tableWrap);
+      updateFolderSelect();
+      renderBreadcrumb();
+    } catch (err) {
+      tableWrap.innerHTML = `<p class="empty-state">⚠️ 加载失败：${err.message}</p>`;
+    }
+  }
+
+  /* ── 渲染文件表格 ── */
+  function renderFileTable(container) {
+    if (folderList.length === 0 && fileList.length === 0) {
+      container.innerHTML = '<p class="empty-state">此文件夹为空</p>';
+      return;
+    }
+
+    let html = `
+      <table class="file-table">
+        <thead>
+          <tr>
+            <th>文件名</th>
+            <th>大小</th>
+            <th>上传日期</th>
+            <th>文件夹</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+
+    /* 先渲染文件夹行 */
+    folderList.forEach(folder => {
+      const folderName = folder.replace(/\/$/, '').split('/').pop();
+      html += `
+        <tr class="file-row folder-row" data-prefix="${escapeHtml(folder)}">
+          <td class="file-name-cell">
+            <span class="file-icon">📂</span>
+            <span class="file-name folder-link" data-prefix="${escapeHtml(folder)}">${escapeHtml(folderName)}</span>
+          </td>
+          <td>—</td>
+          <td>—</td>
+          <td>—</td>
+          <td>
+            <button class="file-action-btn file-delete-btn" data-key="${escapeHtml(folder)}" title="删除文件夹">🗑️</button>
+          </td>
+        </tr>
+      `;
+    });
+
+    /* 渲染文件行 */
+    fileList.forEach(file => {
+      const fileName   = file.key.split('/').pop();
+      const folderPath = file.key.includes('/')
+        ? file.key.split('/').slice(0, -1).join('/')
+        : '根目录';
+      const sizeText   = formatFileSize(file.size);
+      const dateText   = file.lastModified
+        ? new Date(file.lastModified).toLocaleDateString('zh-CN')
+        : '—';
+
+      html += `
+        <tr class="file-row" data-key="${escapeHtml(file.key)}">
+          <td class="file-name-cell">
+            <span class="file-icon">${getFileIcon(fileName)}</span>
+            <span class="file-name" data-key="${escapeHtml(file.key)}" title="${escapeHtml(file.key)}">${escapeHtml(fileName)}</span>
+            <button class="file-rename-btn" data-key="${escapeHtml(file.key)}" title="重命名">✏️</button>
+          </td>
+          <td>${escapeHtml(sizeText)}</td>
+          <td>${escapeHtml(dateText)}</td>
+          <td>${escapeHtml(folderPath)}</td>
+          <td class="file-actions-cell">
+            <a class="file-action-btn file-download-btn"
+               href="${FILE_API_BASE}/download?key=${encodeURIComponent(file.key)}"
+               download="${escapeHtml(fileName)}"
+               title="下载">⬇️</a>
+            <button class="file-action-btn file-delete-btn" data-key="${escapeHtml(file.key)}" title="删除">🗑️</button>
+          </td>
+        </tr>
+      `;
+    });
+
+    html += '</tbody></table>';
+    container.innerHTML = html;
+
+    /* 绑定文件夹点击（进入子目录） */
+    container.querySelectorAll('.folder-link').forEach(el => {
+      el.addEventListener('click', () => {
+        currentPrefix = el.dataset.prefix;
+        loadFileList();
+      });
+    });
+
+    /* 绑定重命名 */
+    container.querySelectorAll('.file-rename-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        handleRename(btn.dataset.key);
+      });
+    });
+
+    /* 绑定删除 */
+    container.querySelectorAll('.file-delete-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        handleDelete(btn.dataset.key);
+      });
+    });
+  }
+
+  /* ── 重命名文件 ── */
+  async function handleRename(oldKey) {
+    const oldName = oldKey.split('/').pop();
+    const newName = prompt(`重命名文件：`, oldName);
+    if (!newName || newName === oldName) return;
+
+    const prefix = oldKey.includes('/')
+      ? oldKey.split('/').slice(0, -1).join('/') + '/'
+      : '';
+    const newKey = prefix + newName;
+
+    try {
+      const resp = await fetch(FILE_API_BASE, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Lib-Token': FILE_TOKEN,
+        },
+        body: JSON.stringify({ oldKey, newKey }),
+      });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      showFileToast(`✅ 已重命名为「${newName}」`);
+      loadFileList();
+    } catch (err) {
+      showFileToast(`❌ 重命名失败：${err.message}`, 'error');
+    }
+  }
+
+  /* ── 删除文件/文件夹 ── */
+  async function handleDelete(key) {
+    const name = key.split('/').filter(Boolean).pop();
+    if (!confirm(`确定要删除「${name}」吗？此操作不可撤销。`)) return;
+
+    try {
+      const resp = await fetch(`${FILE_API_BASE}?key=${encodeURIComponent(key)}`, {
+        method: 'DELETE',
+        headers: { 'X-Lib-Token': FILE_TOKEN },
+      });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      showFileToast(`✅ 已删除「${name}」`);
+      loadFileList();
+    } catch (err) {
+      showFileToast(`❌ 删除失败：${err.message}`, 'error');
+    }
+  }
+
+  /* ── 更新文件夹下拉选择 ── */
+  function updateFolderSelect() {
+    const select = $('#upload-folder-select');
+    if (!select) return;
+
+    /* 收集所有文件夹（从文件列表中提取 + folderList） */
+    const allFolders = new Set(folderList);
+    fileList.forEach(f => {
+      if (f.key.includes('/')) {
+        allFolders.add(f.key.split('/').slice(0, -1).join('/') + '/');
+      }
+    });
+
+    select.innerHTML = '<option value="">📂 上传到根目录</option>';
+    [...allFolders].sort().forEach(folder => {
+      const name = folder.replace(/\/$/, '');
+      const opt  = document.createElement('option');
+      opt.value       = name;
+      opt.textContent = `📁 ${name}`;
+      select.appendChild(opt);
+    });
+  }
+
+  /* ── 渲染面包屑导航 ── */
+  function renderBreadcrumb() {
+    const bc = $('#file-breadcrumb');
+    if (!bc) return;
+
+    if (!currentPrefix) {
+      bc.innerHTML = `<span class="breadcrumb-item breadcrumb-root" data-prefix="">📁 全部文件</span>`;
+    } else {
+      const parts  = currentPrefix.replace(/\/$/, '').split('/');
+      let   html   = `<span class="breadcrumb-item breadcrumb-root" data-prefix="">📁 全部文件</span>`;
+      let   cumulative = '';
+      parts.forEach((part, i) => {
+        cumulative += part + '/';
+        const isLast = i === parts.length - 1;
+        html += `<span class="breadcrumb-sep">›</span>`;
+        if (isLast) {
+          html += `<span class="breadcrumb-item breadcrumb-current">${escapeHtml(part)}</span>`;
+        } else {
+          html += `<span class="breadcrumb-item" data-prefix="${escapeHtml(cumulative)}">${escapeHtml(part)}</span>`;
+        }
+      });
+      bc.innerHTML = html;
+    }
+
+    /* 绑定面包屑点击 */
+    bc.querySelectorAll('.breadcrumb-item[data-prefix]').forEach(el => {
+      el.addEventListener('click', () => {
+        currentPrefix = el.dataset.prefix;
+        loadFileList();
+      });
+    });
+  }
+
+  /* ── 文件操作提示 Toast ── */
+  function showFileToast(msg, type = 'success') {
+    let toast = $('#file-toast');
+    if (!toast) {
+      toast = document.createElement('div');
+      toast.id = 'file-toast';
+      document.body.appendChild(toast);
+    }
+    toast.textContent = msg;
+    toast.className   = `file-toast file-toast-${type} show`;
+    clearTimeout(toast._timer);
+    toast._timer = setTimeout(() => toast.classList.remove('show'), 3000);
+  }
+
+
+  /* ══════════════════════════════════════════
      工具函数
      ══════════════════════════════════════════ */
 
@@ -611,6 +1185,36 @@
     const d       = new Date(dateStr + 'T00:00:00');
     const weekdays = ['日','一','二','三','四','五','六'];
     return `${d.getMonth()+1}月${d.getDate()}日 周${weekdays[d.getDay()]}`;
+  }
+
+  /* 日期格式化（完整版）：YYYY年M月D日 周X */
+  function formatDateFull(dateStr) {
+    if (!dateStr) return '';
+    const d        = new Date(dateStr + 'T00:00:00');
+    const weekdays = ['日','一','二','三','四','五','六'];
+    return `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日 周${weekdays[d.getDay()]}`;
+  }
+
+  /* 文件大小格式化 */
+  function formatFileSize(bytes) {
+    if (!bytes && bytes !== 0) return '—';
+    if (bytes < 1024)       return `${bytes} B`;
+    if (bytes < 1024*1024)  return `${(bytes/1024).toFixed(1)} KB`;
+    return `${(bytes/1024/1024).toFixed(2)} MB`;
+  }
+
+  /* 根据文件扩展名返回图标 */
+  function getFileIcon(name) {
+    const ext = (name.split('.').pop() || '').toLowerCase();
+    const map  = {
+      pdf: '📄', doc: '📝', docx: '📝', xls: '📊', xlsx: '📊',
+      ppt: '📋', pptx: '📋', txt: '📃', md: '📃',
+      jpg: '🖼️', jpeg: '🖼️', png: '🖼️', gif: '🖼️', webp: '🖼️', svg: '🖼️',
+      mp4: '🎬', mov: '🎬', avi: '🎬', mp3: '🎵', wav: '🎵',
+      zip: '🗜️', rar: '🗜️', '7z': '🗜️', tar: '🗜️', gz: '🗜️',
+      js: '⚙️', ts: '⚙️', json: '⚙️', html: '🌐', css: '🎨',
+    };
+    return map[ext] || '📎';
   }
 
   /* 天气代码 → Emoji */

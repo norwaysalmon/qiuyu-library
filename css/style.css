@@ -829,6 +829,476 @@ mark {
 
 
 /* ══════════════════════════════════════════
+   功能一：简报百叶帘（Accordion）
+   ══════════════════════════════════════════ */
+
+/* 分组容器 */
+.accordion-group {
+  margin-bottom: 8px;
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+/* 标题栏：深色背景 + 左侧金色竖线 */
+.accordion-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  background: var(--bg-secondary);
+  border-left: 3px solid var(--accent);
+  cursor: pointer;
+  user-select: none;
+  transition: background var(--transition), border-color var(--transition);
+  outline: none;
+}
+.accordion-header:hover {
+  background: var(--bg-card);
+  border-left-color: var(--accent-light);
+}
+.accordion-group.open .accordion-header {
+  background: var(--bg-card);
+  border-left-color: var(--accent-light);
+}
+
+/* 展开箭头 */
+.accordion-arrow {
+  font-size: .75rem;
+  color: var(--accent);
+  flex-shrink: 0;
+  transition: transform var(--transition);
+  width: 14px;
+  text-align: center;
+}
+
+/* 日期文字（居左） */
+.accordion-date {
+  flex: 1;
+  font-family: var(--font-serif);
+  font-size: .95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* 右侧元信息（金价 + 数量） */
+.accordion-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+.accordion-price {
+  font-family: var(--font-serif);
+  font-size: .88rem;
+  font-weight: 600;
+  color: var(--accent-light);
+  background: var(--accent-glow);
+  padding: 2px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(201,149,107,.18);
+}
+.accordion-count {
+  font-size: .78rem;
+  color: var(--text-muted);
+  background: rgba(255,255,255,.04);
+  padding: 2px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+}
+
+/* 折叠内容区：max-height 动画 */
+.accordion-body {
+  max-height: none;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+  background: var(--bg-primary);
+}
+
+/* 内容区内边距 */
+.accordion-content {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* 折叠状态下内容区不可见 */
+.accordion-group:not(.open) .accordion-body {
+  max-height: 0 !important;
+}
+
+
+/* ══════════════════════════════════════════
+   功能二：文件上传与管理
+   ══════════════════════════════════════════ */
+
+/* ── 面包屑导航 ── */
+.file-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.breadcrumb-item {
+  font-size: .85rem;
+  color: var(--accent);
+  cursor: pointer;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  transition: background var(--transition), color var(--transition);
+}
+.breadcrumb-item:hover {
+  background: var(--accent-glow);
+  color: var(--accent-light);
+}
+.breadcrumb-root {
+  font-weight: 500;
+}
+.breadcrumb-current {
+  color: var(--text-primary);
+  cursor: default;
+  font-weight: 500;
+}
+.breadcrumb-current:hover {
+  background: none;
+  color: var(--text-primary);
+}
+.breadcrumb-sep {
+  color: var(--text-muted);
+  font-size: .9rem;
+}
+
+/* ── 上传区域 ── */
+.file-upload-zone {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+/* 拖拽区 */
+.upload-drop-area {
+  border: 2px dashed var(--border-light);
+  border-radius: var(--radius);
+  padding: 32px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color var(--transition), background var(--transition);
+  margin-bottom: 16px;
+}
+.upload-drop-area:hover,
+.upload-drop-area.drag-over {
+  border-color: var(--accent);
+  background: var(--accent-glow);
+}
+.upload-drop-icon {
+  font-size: 2.2rem;
+  margin-bottom: 8px;
+}
+.upload-drop-text {
+  font-size: .95rem;
+  color: var(--text-primary);
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+.upload-drop-hint {
+  font-size: .8rem;
+  color: var(--text-muted);
+}
+
+/* 控制栏（按钮 + 下拉 + 新建文件夹） */
+.upload-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* 选择文件按钮 */
+.upload-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: linear-gradient(135deg, var(--accent-dark), var(--accent));
+  color: #fff;
+  border-radius: var(--radius-sm);
+  font-size: .85rem;
+  font-family: var(--font-sans);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition);
+  border: none;
+  white-space: nowrap;
+}
+.upload-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(201,149,107,.30);
+}
+
+/* 文件夹下拉 */
+.upload-folder-select {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  color: var(--text-primary);
+  font-size: .85rem;
+  font-family: var(--font-sans);
+  outline: none;
+  cursor: pointer;
+  transition: border-color var(--transition);
+  flex: 1;
+  min-width: 160px;
+  max-width: 260px;
+}
+.upload-folder-select:focus {
+  border-color: var(--accent);
+}
+
+/* 新建文件夹按钮 */
+.upload-mkdir-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: .85rem;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: all var(--transition);
+  white-space: nowrap;
+}
+.upload-mkdir-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-glow);
+}
+
+/* 进度条 */
+.upload-progress-wrap {
+  margin-top: 14px;
+}
+.upload-progress-label {
+  font-size: .82rem;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+.upload-progress-bar {
+  height: 6px;
+  background: var(--bg-input);
+  border-radius: 3px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+.upload-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-dark), var(--accent));
+  border-radius: 3px;
+  transition: width 0.2s ease;
+}
+
+/* ── 文件管理区 ── */
+.file-manager {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.file-manager-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-secondary);
+}
+.file-manager-title {
+  font-size: .9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.file-refresh-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: .8rem;
+  font-family: var(--font-sans);
+  padding: 5px 10px;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.file-refresh-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* 文件表格容器（横向滚动） */
+.file-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* 文件表格 */
+.file-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .85rem;
+  min-width: 560px;
+}
+.file-table thead th {
+  background: var(--bg-input);
+  color: var(--text-muted);
+  font-weight: 500;
+  font-size: .78rem;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  padding: 10px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.file-table tbody .file-row {
+  border-bottom: 1px solid var(--border);
+  transition: background var(--transition);
+}
+.file-table tbody .file-row:last-child {
+  border-bottom: none;
+}
+.file-table tbody .file-row:hover {
+  background: var(--bg-card-hover);
+}
+.file-table tbody td {
+  padding: 10px 14px;
+  color: var(--text-secondary);
+  vertical-align: middle;
+}
+
+/* 文件夹行高亮 */
+.folder-row td {
+  color: var(--text-primary);
+}
+
+/* 文件名单元格 */
+.file-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 180px;
+}
+.file-icon {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+.file-name {
+  flex: 1;
+  color: var(--text-primary);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 220px;
+}
+.folder-link {
+  cursor: pointer;
+  color: var(--accent);
+  transition: color var(--transition);
+}
+.folder-link:hover {
+  color: var(--accent-light);
+  text-decoration: underline;
+}
+
+/* 重命名按钮（内联） */
+.file-rename-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: .85rem;
+  padding: 2px 4px;
+  border-radius: 4px;
+  opacity: 0;
+  transition: opacity var(--transition), background var(--transition);
+  flex-shrink: 0;
+}
+.file-row:hover .file-rename-btn {
+  opacity: 1;
+}
+.file-rename-btn:hover {
+  background: var(--accent-glow);
+}
+
+/* 操作按钮列 */
+.file-actions-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.file-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  font-size: .82rem;
+  cursor: pointer;
+  text-decoration: none;
+  color: var(--text-secondary);
+  transition: all var(--transition);
+}
+.file-download-btn:hover {
+  border-color: var(--info);
+  color: var(--info);
+  background: rgba(100,181,246,.08);
+}
+.file-delete-btn:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+  background: rgba(255,107,107,.08);
+}
+
+/* ── Toast 提示 ── */
+.file-toast {
+  position: fixed;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 20px;
+  font-size: .88rem;
+  color: var(--text-primary);
+  box-shadow: var(--shadow-lg);
+  z-index: 9999;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .25s ease, transform .25s ease;
+  white-space: nowrap;
+}
+.file-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+  pointer-events: auto;
+}
+.file-toast-success { border-color: var(--success); }
+.file-toast-error   { border-color: var(--danger);  }
+
+
+/* ══════════════════════════════════════════
    响应式 — 平板（≤900px）
    ══════════════════════════════════════════ */
 @media (max-width:900px) {
