@@ -1,7 +1,8 @@
 /* ============================================================
-   祈鸳的图书馆 — 完整样式表（第一阶段 + 第二阶段）
-   Design: 深夜图书馆 · Dark Library Theme
+   祈鸳的图书馆 — 完整样式表（第一阶段 + 第二阶段 + 西幻增强）
+   Design: 深夜魔法图书馆 · Dark Arcane Library Theme
    Phase 2: 粒子动画 · 微光扫过 · 交错淡入 · 移动端全屏 Modal
+   Phase 3: 西幻符文装饰 · 魔法光效 · 羊皮纸纹理 · 符文分隔线
    ============================================================ */
 
 
@@ -43,6 +44,18 @@
   --color-close:   #9b3050;
   --color-evening: #3d7fc1;
   --color-weekend: #7c5cbf;
+
+  /* 西幻增强色 */
+  --rune-gold:         #d4a853;
+  --rune-gold-dim:     rgba(212,168,83,0.25);
+  --rune-gold-glow:    rgba(212,168,83,0.08);
+  --parchment:         rgba(201,149,107,0.03);
+  --magic-purple:      rgba(120,80,200,0.12);
+  --magic-blue:        rgba(80,140,220,0.10);
+
+  /* 字体 */
+  --font-serif:  'Playfair Display', 'Noto Serif SC', serif;
+  --font-sans:   'Noto Sans SC', sans-serif;
 
   /* 布局 */
   --sidebar-w: 240px;
@@ -1296,6 +1309,345 @@ mark {
 }
 .file-toast-success { border-color: var(--success); }
 .file-toast-error   { border-color: var(--danger);  }
+
+
+/* ══════════════════════════════════════════
+   Phase 3 — 西幻魔法增强
+   ══════════════════════════════════════════ */
+
+/* ── 符文装饰关键帧 ── */
+@keyframes runeGlow {
+  0%,100% { opacity:.25 }
+  50%      { opacity:.55 }
+}
+@keyframes runeFloat {
+  0%,100% { transform:translateY(0) }
+  50%      { transform:translateY(-3px) }
+}
+@keyframes magicPulse {
+  0%,100% { box-shadow:0 0 8px var(--rune-gold-dim) }
+  50%      { box-shadow:0 0 20px var(--rune-gold-dim), 0 0 40px var(--rune-gold-glow) }
+}
+@keyframes runeRotate {
+  from { transform:rotate(0deg) }
+  to   { transform:rotate(360deg) }
+}
+
+/* ── 1. Logo 魔法光晕 ── */
+.logo {
+  position:relative;
+  padding:4px 12px 4px 8px;
+  border-radius:var(--radius-sm);
+  transition:all var(--transition);
+}
+.logo::before {
+  content:'';
+  position:absolute; inset:-2px;
+  border-radius:calc(var(--radius-sm) + 2px);
+  background:linear-gradient(135deg, var(--rune-gold-dim), transparent 40%, transparent 60%, var(--rune-gold-dim));
+  opacity:0;
+  transition:opacity var(--transition);
+  z-index:-1;
+}
+.logo:hover::before { opacity:1 }
+.logo:hover .logo-text { text-shadow:0 0 12px var(--rune-gold-dim) }
+
+/* ── 2. 侧边栏羊皮纸纹理增强 ── */
+.sidebar {
+  background:
+    repeating-linear-gradient(
+      0deg,
+      transparent 0px,
+      transparent 31px,
+      rgba(212,168,83,.025) 31px,
+      rgba(212,168,83,.025) 32px
+    ),
+    radial-gradient(ellipse at 50% 0%, rgba(212,168,83,.04) 0%, transparent 60%),
+    var(--bg-secondary);
+}
+
+/* 侧边栏底部符文装饰线 */
+.sidebar-footer {
+  position:relative;
+}
+.sidebar-footer::before {
+  content:'◆  ◇  ◆';
+  display:block;
+  text-align:center;
+  font-size:.55rem;
+  color:var(--rune-gold);
+  opacity:.3;
+  letter-spacing:4px;
+  margin-bottom:10px;
+  animation:runeGlow 4s ease-in-out infinite;
+}
+
+/* ── 3. 导航项符文指示条升级 ── */
+.nav-item::before {
+  background:linear-gradient(180deg, var(--rune-gold), var(--accent-dark));
+  box-shadow:0 0 6px var(--rune-gold-dim);
+}
+.nav-item.active::before {
+  box-shadow:0 0 10px var(--rune-gold-dim);
+}
+
+/* ── 4. 仪表盘卡片符文边角装饰 ── */
+.dash-card {
+  border-color:rgba(212,168,83,.12);
+}
+/* 四角符文装饰 */
+.dash-card::before {
+  content:'';
+  position:absolute;
+  top:6px; left:6px; right:6px; bottom:6px;
+  border:1px solid rgba(212,168,83,.06);
+  border-radius:calc(var(--radius) - 4px);
+  pointer-events:none;
+  z-index:0;
+  transition:border-color var(--transition);
+}
+.dash-card:hover::before {
+  border-color:rgba(212,168,83,.15);
+}
+
+/* ── 5. 金价卡魔法水晶球装饰 ── */
+.dash-gold {
+  border-color:rgba(212,168,83,.25);
+  position:relative;
+}
+.dash-gold::before {
+  /* 水晶球光晕 - 增强版 */
+  width:130px; height:130px;
+  background:
+    radial-gradient(circle, rgba(212,168,83,.12) 0%, transparent 60%),
+    radial-gradient(circle at 40% 40%, rgba(255,255,255,.04) 0%, transparent 50%);
+  animation:runeGlow 3s ease-in-out infinite;
+}
+/* 金价卡左侧符文装饰 */
+.dash-gold-left::after {
+  content:'✦';
+  position:absolute;
+  left:-20px; top:50%;
+  transform:translateY(-50%);
+  font-size:.7rem;
+  color:var(--rune-gold);
+  opacity:.35;
+  animation:runeFloat 3s ease-in-out infinite;
+}
+
+/* ── 6. Modal 符文边框 ── */
+.modal {
+  border-color:rgba(212,168,83,.18);
+}
+.modal::before {
+  content:'';
+  position:absolute;
+  top:8px; left:8px; right:8px; bottom:8px;
+  border:1px solid rgba(212,168,83,.06);
+  border-radius:12px;
+  pointer-events:none;
+  z-index:0;
+}
+/* Modal 标题符文装饰 */
+.modal-header h2 {
+  position:relative;
+}
+.modal-header h2::after {
+  content:'◇';
+  position:absolute;
+  right:-16px; top:50%;
+  transform:translateY(-50%);
+  font-size:.6rem;
+  color:var(--rune-gold);
+  opacity:.4;
+  animation:runeGlow 3s ease-in-out infinite 1s;
+}
+
+/* ── 7. 内容列表项魔法hover增强 ── */
+.content-item {
+  border-color:rgba(212,168,83,.08);
+}
+.content-item:hover {
+  border-color:rgba(212,168,83,.25);
+  box-shadow:0 2px 16px rgba(212,168,83,.08), 0 2px 12px rgba(0,0,0,.2);
+}
+
+/* ── 8. 符文分隔线 ── */
+.modal-body hr {
+  border:none;
+  height:1px;
+  background:linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--rune-gold-dim) 20%,
+    var(--rune-gold) 50%,
+    var(--rune-gold-dim) 80%,
+    transparent 100%
+  );
+  margin:24px 0;
+  position:relative;
+}
+.modal-body hr::after {
+  content:'◆';
+  position:absolute;
+  left:50%; top:50%;
+  transform:translate(-50%,-50%);
+  font-size:.5rem;
+  color:var(--rune-gold);
+  background:var(--bg-card);
+  padding:0 8px;
+  opacity:.5;
+}
+
+/* ── 9. 区块标题符文装饰 ── */
+.dash-section-title {
+  position:relative;
+}
+.dash-section-title::after {
+  content:'';
+  position:absolute;
+  bottom:-1px; left:0;
+  width:60px; height:2px;
+  background:linear-gradient(90deg, var(--rune-gold), transparent);
+  border-radius:1px;
+}
+
+/* ── 10. 搜索框魔法聚焦 ── */
+.search-box input[type="text"]:focus {
+  border-color:var(--rune-gold);
+  box-shadow:0 0 0 3px rgba(212,168,83,.12), 0 0 20px rgba(212,168,83,.06);
+}
+
+/* ── 11. 登录页西幻增强 ── */
+.gate-card {
+  border-color:rgba(212,168,83,.15);
+}
+.gate-card::before {
+  content:'';
+  position:absolute;
+  top:10px; left:10px; right:10px; bottom:10px;
+  border:1px solid rgba(212,168,83,.06);
+  border-radius:12px;
+  pointer-events:none;
+}
+.gate-title {
+  text-shadow:0 0 20px rgba(212,168,83,.15);
+}
+.gate-btn {
+  background:linear-gradient(135deg, rgba(139,105,20,.9), var(--rune-gold));
+  position:relative;
+  overflow:hidden;
+}
+.gate-btn::after {
+  content:'';
+  position:absolute;
+  top:-50%; left:-50%;
+  width:200%; height:200%;
+  background:linear-gradient(
+    45deg,
+    transparent 40%,
+    rgba(255,255,255,.06) 50%,
+    transparent 60%
+  );
+  animation:runeRotate 6s linear infinite;
+}
+.gate-glow {
+  background:radial-gradient(circle, rgba(212,168,83,.10) 0%, transparent 70%);
+}
+
+/* ── 12. 粒子升级为魔法萤火 ── */
+.gate-particles i {
+  box-shadow:0 0 4px rgba(212,168,83,.3);
+}
+.gate-particles i:nth-child(odd) {
+  box-shadow:0 0 6px rgba(212,168,83,.4), 0 0 12px rgba(212,168,83,.15);
+}
+
+/* ── 13. 顶栏底部符文光线 ── */
+.topbar::after {
+  content:'';
+  position:absolute;
+  bottom:-1px; left:10%; right:10%;
+  height:1px;
+  background:linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--rune-gold-dim) 30%,
+    var(--rune-gold) 50%,
+    var(--rune-gold-dim) 70%,
+    transparent 100%
+  );
+  opacity:.4;
+}
+
+/* ── 14. 滚动条西幻化 ── */
+::-webkit-scrollbar-thumb {
+  background:linear-gradient(180deg, var(--rune-gold-dim), var(--accent-dark));
+  border-radius:3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background:linear-gradient(180deg, var(--rune-gold), var(--accent));
+}
+
+/* ── 15. 简报百叶帘符文增强 ── */
+.accordion-header {
+  border-left-color:var(--rune-gold);
+}
+.accordion-header:hover,
+.accordion-group.open .accordion-header {
+  border-left-color:var(--accent-light);
+  box-shadow:inset 3px 0 8px -2px var(--rune-gold-dim);
+}
+.accordion-price {
+  border-color:rgba(212,168,83,.22);
+  background:rgba(212,168,83,.08);
+}
+
+/* ── 16. 文件上传区域魔法边框 ── */
+.upload-drop-area {
+  border-color:rgba(212,168,83,.15);
+}
+.upload-drop-area:hover,
+.upload-drop-area.drag-over {
+  border-color:var(--rune-gold);
+  box-shadow:0 0 20px var(--rune-gold-glow);
+}
+
+/* ── 17. Tag 标签微调 ── */
+.tag {
+  border-color:rgba(212,168,83,.18);
+  background:rgba(212,168,83,.08);
+}
+
+/* ── 18. 登录页副标题（西幻格言） ── */
+.gate-subtitle {
+  position:relative;
+  font-style:italic;
+  color:var(--text-secondary);
+}
+.gate-subtitle::before,
+.gate-subtitle::after {
+  content:'—';
+  margin:0 6px;
+  color:var(--rune-gold);
+  opacity:.4;
+}
+
+/* ── 19. 侧边栏导航图标hover微光 ── */
+.nav-item:hover .nav-icon {
+  text-shadow:0 0 8px var(--rune-gold-dim);
+  transition:text-shadow var(--transition);
+}
+.nav-item.active .nav-icon {
+  text-shadow:0 0 10px var(--rune-gold-dim);
+}
+
+/* ── 20. 内容区背景微调（极淡魔法氛围） ── */
+.content {
+  background:
+    radial-gradient(ellipse at 80% 20%, rgba(212,168,83,.02) 0%, transparent 50%),
+    radial-gradient(ellipse at 20% 80%, rgba(120,80,200,.015) 0%, transparent 50%);
+}
 
 
 /* ══════════════════════════════════════════
