@@ -26,7 +26,7 @@
     <div class="gate-card">
       <div class="gate-icon">📚</div>
       <h1 class="gate-title">祈鸳的图书馆</h1>
-      <p class="gate-subtitle">知识是永恒的宝藏</p>
+      <p class="gate-subtitle" id="gate-greeting">加载中...</p>
       <form id="gate-form" class="gate-form">
         <div class="gate-input-wrap">
           <input type="password" id="gate-password" placeholder="输入密码..." autocomplete="off" autofocus>
@@ -40,6 +40,35 @@
   </div>
 
   <script>
+    /* 动态问候语：根据时段 + 语言生成图书馆管理员风格的问候 */
+    (function() {
+      function getGreeting() {
+        const hour = new Date().getHours();
+        const lang = (navigator.language || 'en').toLowerCase();
+        const isZh = lang.startsWith('zh');
+        if (isZh) {
+          if (hour >= 0  && hour < 5)  return '夜深了，远道而来的旅者。是什么知识，让你深夜造访此处？';
+          if (hour >= 5  && hour < 8)  return '清晨的图书馆格外宁静。愿这里的书卷，为你开启新的一天。';
+          if (hour >= 8  && hour < 11) return '日安，求知者。今日的阳光正好，适合翻阅古老的典籍。';
+          if (hour >= 11 && hour < 13) return '午后时光，适合沉思。图书馆已为你备好了一切。';
+          if (hour >= 13 && hour < 17) return '午后阳光透过彩窗洒落。来吧，知识不会自己跑到你面前。';
+          if (hour >= 17 && hour < 19) return '暮色渐浓，烛火已为你点亮。欢迎回到图书馆。';
+          if (hour >= 19 && hour < 23) return '夜幕降临，图书馆的魔法正在苏醒。今夜，你想寻找什么？';
+          return '夜深了，远道而来的旅者。是什么知识，让你深夜造访此处？';
+        }
+        if (hour >= 0  && hour < 5)  return 'The night is deep, traveler. What knowledge draws you here at this hour?';
+        if (hour >= 5  && hour < 8)  return 'The library is quiet in the early morning. May these volumes begin your day.';
+        if (hour >= 8  && hour < 11) return 'Good day, seeker. The light is perfect for exploring ancient tomes.';
+        if (hour >= 11 && hour < 13) return 'Midday is a time for reflection. The library awaits your curiosity.';
+        if (hour >= 13 && hour < 17) return 'Afternoon light filters through the stained glass. Come, knowledge will not find itself.';
+        if (hour >= 17 && hour < 19) return 'Dusk falls, and the candles are lit for you. Welcome back to the library.';
+        if (hour >= 19 && hour < 23) return 'Night descends, and the library\'s magic awakens. What do you seek tonight?';
+        return 'The night is deep, traveler. What knowledge draws you here at this hour?';
+      }
+      const el = document.getElementById('gate-greeting');
+      if (el) el.textContent = getGreeting();
+    })();
+
     (function() {
       /* SHA-256 密码哈希比对，密码为 qiuyu2026 */
       const HASH = '1d34e6f0a50d08c1195ee52646c56e3894eb94b843eee469c644b1d8bd89b9a5';

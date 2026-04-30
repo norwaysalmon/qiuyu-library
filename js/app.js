@@ -1,8 +1,12 @@
 /* ============================================================
-   祈鸳的图书馆 — 主应用逻辑（第一阶段 + 第二阶段 + 第三阶段）
+   祈鸳的图书馆 — 主应用逻辑（第一阶段 + 第二阶段 + 第三阶段 + 第四阶段）
    Phase 3 新增：
      - 简报百叶帘式分页（按日期分组 accordion）
      - 文件上传与管理（R2 + Cloudflare Worker）
+   Phase 4 新增：
+     - Logo 点击回到仪表盘首页
+     - 闲置 30 分钟自动登出
+     - 登录页动态问候语（根据时段 + 语言）
    ============================================================ */
 
 (function () {
@@ -46,6 +50,8 @@
     setupModal();
     setupLogout();
     setupFileUpload();   // 初始化文件上传模块
+    setupLogoHome();     // Logo 点击回到首页
+    setupIdleTimeout();  // 闲置自动登出
 
     /* 根据 URL hash 决定初始视图 */
     const hash = window.location.hash.slice(1) || 'dashboard';
@@ -1243,6 +1249,79 @@
     const esc   = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     return text.replace(new RegExp(`(${esc})`, 'gi'), '<mark>$1</mark>');
   }
+
+
+  /* ══════════════════════════════════════════
+     Phase 4：Logo 回首页 + 闲置登出
+     ══════════════════════════════════════════ */
+
+  /* Logo 点击回到仪表盘首页 */
+  function setupLogoHome() {
+    const logo = $('#logo-home');
+    if (!logo) return;
+    logo.style.cursor = 'pointer';
+    logo.addEventListener('click', () => {
+      navigateTo('dashboard');
+      window.location.hash = 'dashboard';
+    });
+  }
+
+  /* 闲置 30 分钟自动登出 */
+  function setupIdleTimeout() {
+    const IDLE_LIMIT = 30 * 60 * 1000; // 30 分钟
+    let idleTimer = null;
+
+    function resetTimer() {
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => {
+        sessionStorage.removeItem('lib_auth');
+        sessionStorage.removeItem('lib_auth_time');
+        window.location.href = 'index.html';
+      }, IDLE_LIMIT);
+    }
+
+    /* 监听用户活动 */
+    ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'].forEach(evt => {
+      document.addEventListener(evt, resetTimer, { passive: true });
+    });
+
+    resetTimer(); // 启动计时
+  }
+
+
+  /* ══════════════════════════════════════════
+     Phase 4：登录页动态问候语
+     ══════════════════════════════════════════ */
+
+  /**
+   * 根据用户所在时区的小时数 + 浏览器语言，生成图书馆管理员风格的问候语。
+   * 此函数在 index.html（登录页）中调用，不在 app.js 的 IIFE 内。
+   */
+  window.getLibraryGreeting = function () {
+    const hour = new Date().getHours();
+    const lang = (navigator.language || 'en').toLowerCase();
+    const isZh = lang.startsWith('zh');
+
+    if (isZh) {
+      if (hour >= 0  && hour < 5)  return '夜深了，远道而来的旅者。是什么知识，让你深夜造访此处？';
+      if (hour >= 5  && hour < 8)  return '清晨的图书馆格外宁静。愿这里的书卷，为你开启新的一天。';
+      if (hour >= 8  && hour < 11) return '日安，求知者。今日的阳光正好，适合翻阅古老的典籍。';
+      if (hour >= 11 && hour < 13) return '午后时光，适合沉思。图书馆已为你备好了一切。';
+      if (hour >= 13 && hour < 17) return '午后阳光透过彩窗洒落。来吧，知识不会自己跑到你面前。';
+      if (hour >= 17 && hour < 19) return '暮色渐浓，烛火已为你点亮。欢迎回到图书馆。';
+      if (hour >= 19 && hour < 23) return '夜幕降临，图书馆的魔法正在苏醒。今夜，你想寻找什么？';
+      return '夜深了，远道而来的旅者。是什么知识，让你深夜造访此处？';
+    }
+
+    if (hour >= 0  && hour < 5)  return 'The night is deep, traveler. What knowledge draws you here at this hour?';
+    if (hour >= 5  && hour < 8)  return 'The library is quiet in the early morning. May these volumes begin your day.';
+    if (hour >= 8  && hour < 11) return 'Good day, seeker. The light is perfect for exploring ancient tomes.';
+    if (hour >= 11 && hour < 13) return 'Midday is a time for reflection. The library awaits your curiosity.';
+    if (hour >= 13 && hour < 17) return 'Afternoon light filters through the stained glass. Come, knowledge will not find itself.';
+    if (hour >= 17 && hour < 19) return 'Dusk falls, and the candles are lit for you. Welcome back to the library.';
+    if (hour >= 19 && hour < 23) return 'Night descends, and the library\'s magic awakens. What do you seek tonight?';
+    return 'The night is deep, traveler. What knowledge draws you here at this hour?';
+  };
 
 
   /* ══════════════════════════════════════════
