@@ -151,13 +151,22 @@
         /* 淡入黑屏 */
         overlay.classList.add('active');
 
-        /* 3.5 秒后淡出并跳转 */
+        /* 播放欢迎语音 */
+        try {
+          const audio = new Audio(
+            'https://qiuyu-library-api.norwaysalmon.workers.dev/api/files/download?key=uploads/2026-04-30/welcome.wav'
+          );
+          audio.volume = 0.8;
+          audio.play().catch(() => {}); /* 静默失败（浏览器可能阻止自动播放） */
+        } catch(e) {}
+
+        /* 4 秒后淡出并跳转（等语音播完） */
         setTimeout(() => {
           overlay.style.opacity = '0';
           setTimeout(() => {
             window.location.href = 'library.html';
           }, 800);
-        }, 3500);
+        }, 4000);
       }
 
       /* 提交验证 */
