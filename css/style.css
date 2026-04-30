@@ -1714,3 +1714,240 @@ mark {
   .modal-meta   { padding:8px  18px 0 }
   .modal-body   { padding:16px }
 }
+
+
+/* ══════════════════════════════════════════
+   Phase 4 — 烛台装饰
+   ══════════════════════════════════════════ */
+
+/* 火焰跳动动画（左烛台） */
+@keyframes flameLeft {
+  0%,100% { transform: scaleX(1)   scaleY(1)    translateX(0);   opacity: .95 }
+  25%      { transform: scaleX(.88) scaleY(1.08) translateX(-1px); opacity: 1   }
+  50%      { transform: scaleX(1.06) scaleY(.94) translateX(1px);  opacity: .9  }
+  75%      { transform: scaleX(.92) scaleY(1.05) translateX(-1px); opacity: 1   }
+}
+
+/* 火焰跳动动画（右烛台，节奏错开） */
+@keyframes flameRight {
+  0%,100% { transform: scaleX(1)    scaleY(1)    translateX(0);   opacity: .9  }
+  30%      { transform: scaleX(1.07) scaleY(.92) translateX(1px);  opacity: 1   }
+  60%      { transform: scaleX(.9)  scaleY(1.07) translateX(-1px); opacity: .95 }
+  80%      { transform: scaleX(1.04) scaleY(.96) translateX(1px);  opacity: 1   }
+}
+
+/* 光晕脉冲 */
+@keyframes glowPulseCandle {
+  0%,100% { opacity: .55; transform: scale(1)    }
+  50%      { opacity: .85; transform: scale(1.12) }
+}
+
+/* ── 烛台公共基础 ── */
+.candle-left,
+.candle-right {
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+}
+
+.candle-left  { left: 8% }
+.candle-right { right: 8%; transform: translateY(-50%) scaleX(-1) }
+
+/* 光晕：火焰周围暖色扩散 */
+.candle-glow {
+  width: 80px;
+  height: 120px;
+  background: radial-gradient(ellipse at 50% 80%,
+    rgba(212,168,83,.13) 0%,
+    rgba(212,168,83,.06) 40%,
+    transparent 70%
+  );
+  border-radius: 50%;
+  margin-bottom: -60px; /* 与火焰重叠 */
+  animation: glowPulseCandle 3s ease-in-out infinite;
+}
+.candle-right .candle-glow {
+  animation-duration: 3.7s; /* 右侧节奏略不同 */
+}
+
+/* 火焰 */
+.candle-flame {
+  width: 12px;
+  height: 22px;
+  background: radial-gradient(ellipse at 50% 70%,
+    #fff        0%,
+    #ffe066     20%,
+    #ffaa00     50%,
+    #ff6600     75%,
+    transparent 100%
+  );
+  border-radius: 50% 50% 30% 30% / 60% 60% 40% 40%;
+  box-shadow:
+    0 0 6px  2px rgba(255,180,0,.55),
+    0 0 14px 4px rgba(212,168,83,.30),
+    0 0 28px 8px rgba(212,168,83,.12);
+  transform-origin: 50% 90%;
+  animation: flameLeft 2.4s ease-in-out infinite;
+  position: relative;
+  z-index: 2;
+}
+.candle-right .candle-flame {
+  animation-name: flameRight;
+  animation-duration: 2.9s;
+}
+
+/* 蜡烛本体（白色短柱） */
+.candle-body {
+  width: 14px;
+  height: 36px;
+  background: linear-gradient(to right, #d8d4cc, #f0ece4, #d8d4cc);
+  border-radius: 3px 3px 2px 2px;
+  box-shadow: inset -2px 0 4px rgba(0,0,0,.15);
+  margin-top: -2px; /* 与火焰底部衔接 */
+}
+
+/* 烛台柱（细长，深色金属） */
+.candle-holder {
+  width: 8px;
+  height: 48px;
+  background: linear-gradient(to right, #1a1a28, #2e2e42, #1a1a28);
+  border-radius: 2px;
+}
+
+/* 底座（梯形效果用 border trick） */
+.candle-base {
+  width: 32px;
+  height: 10px;
+  background: linear-gradient(to right, #1a1a28, #2e2e42, #1a1a28);
+  border-radius: 3px 3px 4px 4px;
+  box-shadow: 0 2px 6px rgba(0,0,0,.4);
+  /* 梯形：顶部略窄 */
+  clip-path: polygon(10% 0%, 90% 0%, 100% 100%, 0% 100%);
+}
+
+/* 响应式：900px 以下隐藏烛台 */
+@media (max-width: 900px) {
+  .candle-left,
+  .candle-right { display: none }
+}
+
+
+/* ══════════════════════════════════════════
+   Phase 4 — 图书馆守则
+   ══════════════════════════════════════════ */
+
+/* 守则整体容器 */
+.gate-rules {
+  margin-top: 16px;
+  text-align: center;
+}
+
+/* 勾选行：flex 居中 */
+.gate-rules-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: .75rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+/* 自定义 checkbox */
+.gate-rules-check input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid var(--rune-gold-dim);
+  border-radius: 3px;
+  background: transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: border-color var(--transition), background var(--transition);
+  position: relative;
+}
+.gate-rules-check input[type="checkbox"]:checked {
+  background: var(--rune-gold);
+  border-color: var(--rune-gold);
+}
+.gate-rules-check input[type="checkbox"]:checked::after {
+  content: '';
+  position: absolute;
+  left: 3px; top: 1px;
+  width: 5px; height: 8px;
+  border: 1.5px solid #0b0b12;
+  border-top: none; border-left: none;
+  transform: rotate(45deg);
+}
+
+/* 守则链接 */
+.gate-rules-check a {
+  color: var(--rune-gold);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  font-size: .75rem;
+  transition: color var(--transition), opacity var(--transition);
+}
+.gate-rules-check a:hover {
+  color: var(--accent-light);
+  opacity: 1;
+}
+
+/* 守则展开内容 */
+.gate-rules-content {
+  margin-top: 10px;
+  text-align: left;
+  font-size: .72rem;
+  color: var(--text-secondary);
+  line-height: 1.8;
+  border-left: 2px solid var(--rune-gold-dim);
+  padding-left: 12px;
+}
+.gate-rules-content p {
+  margin: 4px 0;
+}
+
+
+/* ══════════════════════════════════════════
+   Phase 4 — 管理员专属欢迎动画
+   ══════════════════════════════════════════ */
+
+.welcome-overlay {
+  position: fixed;
+  inset: 0;
+  background: #0b0b12;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.8s ease;
+}
+.welcome-overlay.active {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.welcome-text {
+  font-family: var(--font-serif);
+  font-size: 1.4rem;
+  color: var(--rune-gold);
+  text-align: center;
+  line-height: 2;
+  max-width: 500px;
+  padding: 0 24px;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 1.2s ease, transform 1.2s ease;
+}
+.welcome-overlay.active .welcome-text {
+  opacity: 1;
+  transform: translateY(0);
+}
