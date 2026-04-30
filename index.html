@@ -8,6 +8,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Noto+Sans+SC:wght@300;400;500;600&family=Playfair+Display:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
+  <!-- 预加载欢迎语音（同源，避免跨域问题） -->
+  <audio id="welcome-audio" src="audio/welcome.wav" preload="auto"></audio>
 </head>
 <body class="gate-body">
 
@@ -151,14 +153,13 @@
         /* 淡入黑屏 */
         overlay.classList.add('active');
 
-        /* 播放欢迎语音 */
-        try {
-          const audio = new Audio(
-            'https://qiuyu-library-api.norwaysalmon.workers.dev/api/files/download?key=uploads/2026-04-30/welcome.wav'
-          );
+        /* 播放欢迎语音（同源预加载，此时取消静音即可） */
+        const audio = document.getElementById('welcome-audio');
+        if (audio) {
           audio.volume = 0.8;
-          audio.play().catch(() => {}); /* 静默失败（浏览器可能阻止自动播放） */
-        } catch(e) {}
+          audio.currentTime = 0;
+          audio.play().catch(() => {});
+        }
 
         /* 4 秒后淡出并跳转（等语音播完） */
         setTimeout(() => {
@@ -182,13 +183,23 @@
         }
         if (rulesError) rulesError.style.display = 'none';
 
+        /* 在用户手势上下文中立即 play（静音），保持手势链不被异步打断 */
+        const audio = document.getElementById('welcome-audio');
+        if (audio) {
+          audio.volume = 0;
+          audio.currentTime = 0;
+          audio.play().catch(() => {});
+        }
+
         const hash = await sha256(input.value.trim());
         if (hash === HASH) {
           sessionStorage.setItem('lib_auth', '1');
           sessionStorage.setItem('lib_auth_time', Date.now().toString());
-          /* 管理员专属欢迎动画 */
+          /* 管理员专属欢迎动画（会取消静音播放语音） */
           showWelcomeAnimation();
         } else {
+          /* 密码错误，停止静音播放 */
+          if (audio) { audio.pause(); audio.currentTime = 0; }
           error.style.display = 'block';
           input.classList.add('shake');
           setTimeout(() => input.classList.remove('shake'), 500);
