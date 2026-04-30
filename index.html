@@ -156,7 +156,7 @@
         /* 播放欢迎语音（同源预加载，此时取消静音即可） */
         const audio = document.getElementById('welcome-audio');
         if (audio) {
-          audio.volume = 0.8;
+          audio.volume = 0.5;
           audio.currentTime = 0;
           audio.play().catch(() => {});
         }
