@@ -1,0 +1,15 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "qiuyu-library-api",
+  "main": "worker.js",
+  "compatibility_date": "2026-04-30",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "observability": {
+    "enabled": true
+  },
+  "r2_buckets": [
+    { "binding": "LIBRARY", "bucket_name": "library" }
+  ]
+}

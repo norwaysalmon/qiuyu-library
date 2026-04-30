@@ -42,14 +42,19 @@ export default {
       return handleCors(request, new Response(null, { status: 204 }));
     }
 
+    const url      = new URL(request.url);
+    const pathname = url.pathname;
+
+    /* 公开图片访问路由（无需认证，用于 <img> 标签内嵌显示） */
+    if (pathname.startsWith('/img/') && request.method === 'GET') {
+      return handleCors(request, await servePublicImage(request, env));
+    }
+
     /* 认证检查 */
     const token = request.headers.get('X-Lib-Token');
     if (token !== AUTH_TOKEN) {
       return handleCors(request, jsonResponse({ error: '未授权' }, 401));
     }
-
-    const url      = new URL(request.url);
-    const pathname = url.pathname;
 
     try {
       /* 路由分发 */
@@ -305,6 +310,40 @@ async function downloadFile(request, env) {
   );
   /* 缓存控制 */
   headers.set('Cache-Control', 'private, max-age=3600');
+
+  return new Response(object.body, { status: 200, headers });
+}
+
+
+/* ══════════════════════════════════════════
+   GET /img/:key — 公开图片访问（无需认证）
+   用于 <img> 标签内嵌显示，仅允许图片类型
+   ══════════════════════════════════════════ */
+async function servePublicImage(request, env) {
+  const url = new URL(request.url);
+  /* 去掉 /img/ 前缀，得到 R2 key */
+  const key = decodeURIComponent(url.pathname.slice(5)); // "/img/uploads/xxx.png" → "uploads/xxx.png"
+
+  if (!key) {
+    return jsonResponse({ error: '缺少文件路径' }, 400);
+  }
+
+  const object = await env.LIBRARY.get(key);
+  if (!object) {
+    return jsonResponse({ error: `文件「${key}」不存在` }, 404);
+  }
+
+  /* 安全检查：仅允许图片类型 */
+  const contentType = object.httpMetadata?.contentType || '';
+  const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp', 'image/svg+xml'];
+  if (!allowedTypes.includes(contentType)) {
+    return jsonResponse({ error: '仅允许访问图片文件' }, 403);
+  }
+
+  const headers = new Headers();
+  headers.set('Content-Type', contentType);
+  headers.set('Cache-Control', 'public, max-age=86400');
+  /* 不设置 Content-Disposition，让浏览器直接显示而非下载 */
 
   return new Response(object.body, { status: 200, headers });
 }
