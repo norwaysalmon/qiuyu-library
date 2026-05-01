@@ -211,12 +211,57 @@
       <section class="view hidden" id="view-links">
         <div class="view-header">
           <h1>🔗 外部链接</h1>
-          <p class="view-subtitle">网盘文件与外部资源</p>
+          <p class="view-subtitle">点击文件与外部资源</p>
+          <button class="links-add-btn" id="links-add-btn" title="添加链接">＋</button>
         </div>
-        <div class="content-list" id="links-list">
-          <p class="empty-state">暂无链接</p>
+        <div class="links-grid" id="links-grid">
+          <!-- 由 JS 动态渲染 -->
         </div>
+        <p class="links-hint">请拖拽内更多世界，加链接无限可能。</p>
       </section>
+
+      <!-- ─── 添加链接 Modal ─── -->
+      <div class="modal-overlay hidden" id="link-modal-overlay">
+        <div class="modal link-modal">
+          <div class="modal-header">
+            <h2>添加新链接</h2>
+            <button class="modal-close" id="link-modal-close">&times;</button>
+          </div>
+          <div class="link-modal-body">
+            <label class="link-field">
+              <span>网站名称</span>
+              <input type="text" id="link-input-name" placeholder="例：MIT Technology Review" maxlength="60">
+            </label>
+            <label class="link-field">
+              <span>副标题</span>
+              <input type="text" id="link-input-subtitle" placeholder="例：The Next Compute Revolution" maxlength="80">
+            </label>
+            <label class="link-field">
+              <span>网址 URL</span>
+              <input type="url" id="link-input-url" placeholder="https://...">
+            </label>
+            <label class="link-field">
+              <span>品牌色</span>
+              <div class="link-color-picker" id="link-color-picker">
+                <button class="color-swatch active" data-color="#c0392b" style="background:#c0392b"></button>
+                <button class="color-swatch" data-color="#e74c3c" style="background:#e74c3c"></button>
+                <button class="color-swatch" data-color="#e67e22" style="background:#e67e22"></button>
+                <button class="color-swatch" data-color="#f39c12" style="background:#f39c12"></button>
+                <button class="color-swatch" data-color="#27ae60" style="background:#27ae60"></button>
+                <button class="color-swatch" data-color="#2980b9" style="background:#2980b9"></button>
+                <button class="color-swatch" data-color="#8e44ad" style="background:#8e44ad"></button>
+                <button class="color-swatch" data-color="#1abc9c" style="background:#1abc9c"></button>
+                <button class="color-swatch" data-color="#c9956b" style="background:#c9956b"></button>
+                <button class="color-swatch" data-color="#e8e0d8" style="background:#e8e0d8"></button>
+              </div>
+            </label>
+          </div>
+          <div class="link-modal-footer">
+            <button class="link-modal-cancel" id="link-modal-cancel">取消</button>
+            <button class="link-modal-save" id="link-modal-save">保存</button>
+          </div>
+        </div>
+      </div>
 
       <!-- ─── 搜索结果 ─── -->
       <section class="view hidden" id="view-search">

@@ -52,6 +52,7 @@
     setupFileUpload();   // 初始化文件上传模块
     setupLogoHome();     // Logo 点击回到首页
     setupIdleTimeout();  // 闲置自动登出
+    initLinkModal();     // 外部链接 Modal
 
     /* 根据 URL hash 决定初始视图 */
     const hash = window.location.hash.slice(1) || 'dashboard';
@@ -188,11 +189,154 @@
     loadFileList();
   }
 
+  /* ══════════════════════════════════════════
+     外部链接模块 — 杂志封面风格卡片
+     Phase 4.1
+     ══════════════════════════════════════════ */
+
+  const LINKS_STORAGE_KEY = 'lib_external_links';
+  let selectedLinkColor = '#c0392b';
+
+  /* 默认链接池（祈鸳指定） */
+  const DEFAULT_LINKS = [
+    { id: 'time',           name: 'TIME',                          subtitle: 'The World at a Crossroads · 世界时局',       url: 'https://time.com',           color: '#c0392b', builtin: true },
+    { id: 'economist',     name: 'The Economist',                 subtitle: 'The Price of Power · 经济学人·全球经济',     url: 'https://www.economist.com',  color: '#c0392b', builtin: true },
+    { id: 'ft',            name: 'FINANCIAL HERALD',              subtitle: 'Markets Watch Fed as Growth Cools · 金融时报·市场观察', url: 'https://www.ft.com', color: '#e8b931', builtin: true },
+    { id: 'chronicle',     name: 'THE DAILY CHRONICLE',           subtitle: 'Science Breakthrough, A New Era of Discovery · 每日纪事·科学前沿', url: 'https://www.sciencedaily.com', color: '#2980b9', builtin: true },
+    { id: 'youtube',       name: 'YouTube',                       subtitle: '视频世界',                                  url: 'https://www.youtube.com',    color: '#c0392b', builtin: true },
+    { id: 'bilibili',      name: 'bilibili',                      subtitle: '弹幕宇宙',                                  url: 'https://www.bilibili.com',   color: '#e74c3c', builtin: true },
+    { id: 'mit',           name: 'MIT Technology Review',         subtitle: 'The Next Compute Revolution · 麻省理工评论·技术突破', url: 'https://www.technologyreview.com', color: '#27ae60', builtin: true },
+    { id: 'literary',      name: 'LITERARY LANTERN',              subtitle: 'Stories That Illuminate Humanity · 文学灯塔·思想与文化', url: 'https://www.literaryhub.com', color: '#8e44ad', builtin: true },
+  ];
+
+  /* 读取链接数据（localStorage + 默认合并） */
+  function loadLinks() {
+    try {
+      const stored = JSON.parse(localStorage.getItem(LINKS_STORAGE_KEY));
+      if (Array.isArray(stored) && stored.length > 0) return stored;
+    } catch (e) { /* ignore */ }
+    return [...DEFAULT_LINKS];
+  }
+
+  /* 保存链接数据 */
+  function saveLinks(links) {
+    localStorage.setItem(LINKS_STORAGE_KEY, JSON.stringify(links));
+  }
+
+  /* 渲染外部链接视图 */
   function renderLinks() {
-    const items = searchIndex
-      .filter(i => i.type === 'link')
-      .sort((a, b) => b.date.localeCompare(a.date));
-    renderList($('#links-list'), items, '暂无链接');
+    const links = loadLinks();
+    const grid = $('#links-grid');
+    if (!grid) return;
+
+    if (links.length === 0) {
+      grid.innerHTML = '<p class="empty-state">暂无链接，点击右上角 ＋ 添加</p>';
+      return;
+    }
+
+    grid.innerHTML = links.map((link, i) => `
+      <a class="link-card" href="${escapeHtml(link.url)}" target="_blank" rel="noopener noreferrer"
+         style="--card-accent: ${link.color || 'rgba(201,149,107,0.15)'}; animation: fadeInUp 0.4s ease ${i * 0.05}s both">
+        <button class="link-card-delete" data-id="${escapeHtml(link.id)}" title="删除此链接">&times;</button>
+        <div class="link-card-body">
+          <div class="link-card-name">${escapeHtml(link.name)}</div>
+          <div class="link-card-subtitle">${escapeHtml(link.subtitle || '')}</div>
+        </div>
+      </a>
+    `).join('');
+
+    /* 绑定删除事件 */
+    grid.querySelectorAll('.link-card-delete').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const id = btn.dataset.id;
+        const links = loadLinks();
+        const updated = links.filter(l => l.id !== id);
+        saveLinks(updated);
+        renderLinks();
+      });
+    });
+
+    /* 更新 badge */
+    const badge = $('#badge-links');
+    if (badge) badge.textContent = links.length;
+  }
+
+  /* ── 添加链接 Modal 逻辑 ── */
+  function initLinkModal() {
+    const overlay  = $('#link-modal-overlay');
+    const addBtn   = $('#links-add-btn');
+    const closeBtn = $('#link-modal-close');
+    const cancelBtn= $('#link-modal-cancel');
+    const saveBtn  = $('#link-modal-save');
+    const picker   = $('#link-color-picker');
+
+    if (!overlay || !addBtn) return;
+
+    function openModal() {
+      overlay.classList.remove('hidden');
+      $('#link-input-name').value = '';
+      $('#link-input-subtitle').value = '';
+      $('#link-input-url').value = '';
+      selectedLinkColor = '#c0392b';
+      picker.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+      picker.querySelector('[data-color="#c0392b"]').classList.add('active');
+      $('#link-input-name').focus();
+    }
+
+    function closeModal() {
+      overlay.classList.add('hidden');
+    }
+
+    addBtn.addEventListener('click', openModal);
+    closeBtn.addEventListener('click', closeModal);
+    cancelBtn.addEventListener('click', closeModal);
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) closeModal();
+    });
+
+    /* 颜色选择 */
+    picker.querySelectorAll('.color-swatch').forEach(swatch => {
+      swatch.addEventListener('click', () => {
+        picker.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+        swatch.classList.add('active');
+        selectedLinkColor = swatch.dataset.color;
+      });
+    });
+
+    /* 保存 */
+    saveBtn.addEventListener('click', () => {
+      const name     = $('#link-input-name').value.trim();
+      const subtitle = $('#link-input-subtitle').value.trim();
+      const url      = $('#link-input-url').value.trim();
+
+      if (!name || !url) {
+        /* 简单校验：名称和 URL 必填 */
+        if (!name) $('#link-input-name').style.borderColor = 'var(--danger)';
+        if (!url)  $('#link-input-url').style.borderColor = 'var(--danger)';
+        return;
+      }
+
+      const links = loadLinks();
+      links.push({
+        id: 'custom_' + Date.now(),
+        name,
+        subtitle: subtitle || '',
+        url,
+        color: selectedLinkColor,
+        builtin: false,
+      });
+      saveLinks(links);
+      closeModal();
+      renderLinks();
+    });
+
+    /* 输入时清除错误样式 */
+    ['link-input-name', 'link-input-url'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('input', () => { el.style.borderColor = ''; });
+    });
   }
 
   function renderRecentItems() {
@@ -392,7 +536,7 @@
     $('#badge-briefings').textContent = counts.briefing;
     $('#badge-notes').textContent     = counts.note;
     $('#badge-files').textContent     = counts.file;
-    $('#badge-links').textContent     = counts.link;
+    $('#badge-links').textContent     = loadLinks().length;
   }
 
   function updateStats() {
@@ -401,7 +545,7 @@
     $('#stat-briefings').textContent = counts.briefing;
     $('#stat-notes').textContent     = counts.note;
     $('#stat-files').textContent     = counts.file;
-    $('#stat-links').textContent     = counts.link;
+    $('#stat-links').textContent     = loadLinks().length;
   }
 
 
