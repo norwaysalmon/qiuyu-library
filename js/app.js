@@ -197,23 +197,25 @@
   const LINKS_STORAGE_KEY = 'lib_external_links';
   let selectedLinkColor = '#c0392b';
 
-  /* 默认链接池（祈鸳指定） */
+  /* 默认链接池（以目标图的“杂志摊 / 图书馆报刊柜”视觉为蓝本） */
   const DEFAULT_LINKS = [
-    { id: 'time',           name: 'TIME',                          subtitle: 'The World at a Crossroads · 世界时局',       url: 'https://time.com',           color: '#c0392b', builtin: true },
-    { id: 'economist',     name: 'The Economist',                 subtitle: 'The Price of Power · 经济学人·全球经济',     url: 'https://www.economist.com',  color: '#c0392b', builtin: true },
-    { id: 'ft',            name: 'FINANCIAL HERALD',              subtitle: 'Markets Watch Fed as Growth Cools · 金融时报·市场观察', url: 'https://www.ft.com', color: '#e8b931', builtin: true },
-    { id: 'chronicle',     name: 'THE DAILY CHRONICLE',           subtitle: 'Science Breakthrough, A New Era of Discovery · 每日纪事·科学前沿', url: 'https://www.sciencedaily.com', color: '#2980b9', builtin: true },
-    { id: 'youtube',       name: 'YouTube',                       subtitle: '视频世界',                                  url: 'https://www.youtube.com',    color: '#c0392b', builtin: true },
-    { id: 'bilibili',      name: 'bilibili',                      subtitle: '弹幕宇宙',                                  url: 'https://www.bilibili.com',   color: '#e74c3c', builtin: true },
-    { id: 'mit',           name: 'MIT Technology Review',         subtitle: 'The Next Compute Revolution · 麻省理工评论·技术突破', url: 'https://www.technologyreview.com', color: '#27ae60', builtin: true },
-    { id: 'literary',      name: 'LITERARY LANTERN',              subtitle: 'Stories That Illuminate Humanity · 文学灯塔·思想与文化', url: 'https://www.literaryhub.com', color: '#8e44ad', builtin: true },
+    { id: 'time',      name: 'TIME',                  subtitle: 'THE WORLD AT A CROSSROADS · 世界时局',          url: 'https://time.com',                  color: '#c0392b', kind: 'magazine time',     kicker: 'THE WORLD', builtin: true },
+    { id: 'economist', name: 'The Economist',         subtitle: 'The Price of Power · 经济学人 · 全球经济',       url: 'https://www.economist.com',         color: '#c0392b', kind: 'magazine economist',kicker: 'GLOBAL ECONOMY', builtin: true },
+    { id: 'ft',        name: 'FINANCIAL HERALD',      subtitle: 'Markets Watch Feed as Growth Cools · 市场观察', url: 'https://www.ft.com',                color: '#d9b56f', kind: 'newspaper finance', builtin: true },
+    { id: 'chronicle', name: 'THE DAILY CHRONICLE',   subtitle: 'Science Breakthrough · 科学前沿',               url: 'https://www.sciencedaily.com',      color: '#b88954', kind: 'newspaper science', builtin: true },
+    { id: 'youtube',   name: 'YouTube',               subtitle: '视频世界',                                      url: 'https://www.youtube.com',           color: '#ff3131', kind: 'screen youtube',    builtin: true },
+    { id: 'bilibili',  name: 'bilibili',              subtitle: '弹幕宇宙',                                      url: 'https://www.bilibili.com',          color: '#fb72b7', kind: 'screen bilibili',   builtin: true },
+    { id: 'mit',       name: 'MIT Technology Review', subtitle: 'The Next Compute Revolution · 技术洞察',        url: 'https://www.technologyreview.com',  color: '#22b8cf', kind: 'magazine tech',     kicker: 'FUTURE LAB', builtin: true },
+    { id: 'literary',  name: 'LITERARY LANTERN',      subtitle: 'Stories That Illuminate Humanity · 思想与文化',  url: 'https://www.literaryhub.com',       color: '#d7a95b', kind: 'book literary',     kicker: 'BOOKS · IDEAS · CULTURE', builtin: true },
   ];
 
   /* 读取链接数据（localStorage + 默认合并） */
   function loadLinks() {
     try {
       const stored = JSON.parse(localStorage.getItem(LINKS_STORAGE_KEY));
-      if (Array.isArray(stored) && stored.length > 0) return stored;
+      if (Array.isArray(stored) && stored.length > 0) {
+        return stored.map(link => ({ ...link, ...inferLinkVisual(link) }));
+      }
     } catch (e) { /* ignore */ }
     return [...DEFAULT_LINKS];
   }
@@ -221,6 +223,99 @@
   /* 保存链接数据 */
   function saveLinks(links) {
     localStorage.setItem(LINKS_STORAGE_KEY, JSON.stringify(links));
+  }
+
+  /* 对旧版本 / 自定义链接补齐视觉类型 */
+  function inferLinkVisual(link) {
+    const id = (link.id || '').toLowerCase();
+    const name = (link.name || '').toLowerCase();
+    if (id === 'time' || name === 'time') return { kind: 'magazine time', kicker: 'THE WORLD' };
+    if (id.includes('economist') || name.includes('economist')) return { kind: 'magazine economist', kicker: 'GLOBAL ECONOMY' };
+    if (id === 'ft' || name.includes('financial') || name.includes('herald')) return { kind: 'newspaper finance' };
+    if (id.includes('chronicle') || name.includes('daily')) return { kind: 'newspaper science' };
+    if (id.includes('youtube') || name.includes('youtube')) return { kind: 'screen youtube' };
+    if (id.includes('bilibili') || name.includes('bilibili')) return { kind: 'screen bilibili' };
+    if (id.includes('mit') || name.includes('technology')) return { kind: 'magazine tech', kicker: 'FUTURE LAB' };
+    if (id.includes('literary') || name.includes('literary')) return { kind: 'book literary', kicker: 'BOOKS · IDEAS · CULTURE' };
+    return { kind: 'magazine custom', kicker: 'ARCANE INDEX' };
+  }
+
+  function getLinkCardClass(link) {
+    const visual = link.kind || inferLinkVisual(link).kind;
+    return `link-card ${visual.split(/\s+/).map(k => `link-${k}`).join(' ')}`;
+  }
+
+  function splitLinkSubtitle(subtitle) {
+    const raw = subtitle || '';
+    const parts = raw.split('·').map(s => s.trim()).filter(Boolean);
+    return {
+      headline: parts[0] || raw || 'Untitled Portal',
+      label: parts.slice(1).join(' · ') || raw || '外部资源'
+    };
+  }
+
+  function createLinkCover(link) {
+    const kind = link.kind || inferLinkVisual(link).kind;
+    const { headline, label } = splitLinkSubtitle(link.subtitle);
+    const name = escapeHtml(link.name || 'Untitled');
+    const safeHeadline = escapeHtml(headline);
+    const safeLabel = escapeHtml(label);
+    const kicker = escapeHtml(link.kicker || inferLinkVisual(link).kicker || 'ARCANE INDEX');
+
+    if (kind.includes('youtube')) {
+      return `
+        <div class="link-cover link-cover-screen">
+          <div class="link-screen-bezel">
+            <div class="link-youtube-logo"><span class="link-play-triangle"></span></div>
+            <div class="link-screen-title">${name}</div>
+            <div class="link-screen-controls"><span></span><span></span><span></span><i></i><span></span></div>
+          </div>
+        </div>`;
+    }
+
+    if (kind.includes('bilibili')) {
+      return `
+        <div class="link-cover link-cover-tv">
+          <div class="link-tv-frame">
+            <div class="link-tv-screen">
+              <div class="link-bili-face">⌁</div>
+              <div class="link-bili-word">bilibili</div>
+            </div>
+            <div class="link-tv-knobs"><span></span><span></span><span></span></div>
+          </div>
+        </div>`;
+    }
+
+    if (kind.includes('newspaper')) {
+      return `
+        <div class="link-cover link-cover-paper">
+          <div class="link-paper-masthead">${name}</div>
+          <div class="link-paper-rule"></div>
+          <div class="link-paper-headline">${safeHeadline}</div>
+          <div class="link-paper-layout">
+            <div class="link-paper-columns"><span></span><span></span><span></span><span></span></div>
+            <div class="link-paper-illustration"><span></span></div>
+          </div>
+        </div>`;
+    }
+
+    if (kind.includes('book')) {
+      return `
+        <div class="link-cover link-cover-book">
+          <div class="link-book-title">${name}</div>
+          <div class="link-book-window"><span></span></div>
+          <div class="link-book-kicker">${safeHeadline}</div>
+        </div>`;
+    }
+
+    return `
+      <div class="link-cover link-cover-magazine">
+        <div class="link-mag-kicker">${kicker}</div>
+        <div class="link-mag-name">${name}</div>
+        <div class="link-mag-art"><span></span><i></i></div>
+        <div class="link-mag-headline">${safeHeadline}</div>
+        <div class="link-mag-label">${safeLabel}</div>
+      </div>`;
   }
 
   /* 渲染外部链接视图 */
@@ -234,16 +329,21 @@
       return;
     }
 
-    grid.innerHTML = links.map((link, i) => `
-      <a class="link-card" href="${escapeHtml(link.url)}" target="_blank" rel="noopener noreferrer"
-         style="--card-accent: ${link.color || 'rgba(201,149,107,0.15)'}; animation: fadeInUp 0.4s ease ${i * 0.05}s both">
-        <button class="link-card-delete" data-id="${escapeHtml(link.id)}" title="删除此链接">&times;</button>
-        <div class="link-card-body">
-          <div class="link-card-name">${escapeHtml(link.name)}</div>
-          <div class="link-card-subtitle">${escapeHtml(link.subtitle || '')}</div>
-        </div>
-      </a>
-    `).join('');
+    grid.innerHTML = links.map((link, i) => {
+      const visual = inferLinkVisual(link);
+      const normalized = { ...visual, ...link, kind: link.kind || visual.kind, kicker: link.kicker || visual.kicker };
+      const { label } = splitLinkSubtitle(normalized.subtitle);
+      return `
+        <a class="${getLinkCardClass(normalized)}" href="${escapeHtml(normalized.url)}" target="_blank" rel="noopener noreferrer"
+           style="--card-accent:${normalized.color || '#c9956b'}; --delay:${i * 45}ms;">
+          <button class="link-card-delete" data-id="${escapeHtml(normalized.id)}" title="删除此链接" aria-label="删除此链接">&times;</button>
+          ${createLinkCover(normalized)}
+          <div class="link-card-caption">
+            <span class="link-card-name">${escapeHtml(normalized.name)}</span>
+            <span class="link-card-subtitle">${escapeHtml(label)}</span>
+          </div>
+        </a>`;
+    }).join('');
 
     /* 绑定删除事件 */
     grid.querySelectorAll('.link-card-delete').forEach(btn => {
@@ -262,7 +362,6 @@
     const badge = $('#badge-links');
     if (badge) badge.textContent = links.length;
   }
-
   /* ── 添加链接 Modal 逻辑 ── */
   function initLinkModal() {
     const overlay  = $('#link-modal-overlay');
