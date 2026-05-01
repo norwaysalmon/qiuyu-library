@@ -230,7 +230,7 @@
     if (!grid) return;
 
     if (links.length === 0) {
-      grid.innerHTML = '<p class="empty-state">暂无链接，点击右上角 ＋ 添加</p>';
+      grid.innerHTML = '<p class="empty-state">书架上还空无一物，点击右上角 ＋ 添加你的第一个世界。</p>';
       return;
     }
 
